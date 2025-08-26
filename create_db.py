@@ -1,8 +1,9 @@
 import sqlite3
 import os
+import random
 
 # Создаём файл базы данных
-db_file = 'real_estate.db'
+db_file = 'real_estate_1.db'
 if os.path.exists(db_file):
     os.remove(db_file)
 
@@ -107,7 +108,6 @@ CREATE TABLE Orders (
     staff_id INTEGER,
     complex_id INTEGER,
     building_id INTEGER,
-    object_id INTEGER,
     total_amount REAL,
     payment_terms TEXT,
     discount_amount REAL,
@@ -116,8 +116,7 @@ CREATE TABLE Orders (
     FOREIGN KEY (client_id) REFERENCES Clients(client_id),
     FOREIGN KEY (staff_id) REFERENCES Staff(staff_id),
     FOREIGN KEY (complex_id) REFERENCES Residential_complex(complex_id),
-    FOREIGN KEY (building_id) REFERENCES Buildings(building_id),
-    FOREIGN KEY (object_id) REFERENCES Objects(object_id)
+    FOREIGN KEY (building_id) REFERENCES Buildings(building_id)
 );
 ''')
 
@@ -155,7 +154,7 @@ CREATE TABLE Transactions (
 ''')
 
 # Заполнение данными
-# Object_types (добавлены 'Кладовка' и 'Парковка')
+# Object_types (7 записей)
 cursor.executemany('''
 INSERT INTO Object_types (object_type, name_object)
 VALUES (?, ?)
@@ -164,43 +163,46 @@ VALUES (?, ?)
     (2, 'Апартаменты'),
     (3, 'Студия'),
     (4, 'Кладовка'),
-    (5, 'Парковка')
-] + [(i+6, f'Тип {i}') for i in range(25)])
+    (5, 'Парковка'),
+    (6, 'Мансарда'),
+    (7, 'Терраса')
+])
 
-# Residential_complex (30 записей)
-residential_data = []
-for i in range(1, 31):
-    residential_data.append((
-        i,
-        f'Комплекс {i}',
-        ['Москва', 'Санкт-Петербург', 'Новосибирск'][i % 3],
-        f'Улица {i}',
-        f'Метро {i}',
-        round(0.1 * (i % 10) + 0.5, 1),
-        i % 2,
-        (i + 1) % 2
-    ))
+# Residential_complex (7 записей)
+residential_data = [
+    (1, 'Зелёный Оазис', 'Москва', 'Ленина', 'Парк Культуры', 0.5, 1, 1),
+    (2, 'Городские Высоты', 'Санкт-Петербург', 'Невский', 'Площадь Восстания', 0.3, 1, 0),
+    (3, 'Риверсайд', 'Москва', 'Кутузовский', 'Киевская', 1.2, 0, 1),
+    (4, 'Солнечный Берег', 'Новосибирск', 'Горская', 'Речной Вокзал', 0.8, 1, 1),
+    (5, 'Центральный', 'Москва', 'Тверская', 'Тверская', 0.4, 0, 0),
+    (6, 'Морской Бриз', 'Санкт-Петербург', 'Морская', 'Приморская', 0.6, 1, 1),
+    (7, 'Лесной Уют', 'Новосибирск', 'Лесная', 'Заельцовская', 1.0, 0, 1)
+]
 cursor.executemany('''
 INSERT INTO Residential_complex (complex_id, complex_name, city, street, subway, subway_nearest, childrens_playground, sports_ground)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ''', residential_data)
 
-# Buildings (30 записей)
+# Buildings (30 записей, по 4–5 зданий на комплекс)
 buildings_data = []
-for i in range(1, 31):
-    buildings_data.append((
-        i,
-        (i % 30) + 1,
-        ['Москва', 'Санкт-Петербург', 'Новосибирск'][i % 3],
-        f'Улица {i}',
-        f'{i*2}',
-        f'202{i % 10 + 1}-0{i % 9 + 1}-01',
-        ['residential_building', 'apartment'][i % 2],
-        ['Бизнес', 'Эконом', 'Премиум'][i % 3],
-        ['Кирпич', 'Панель', 'Монолит'][i % 3],
-        i % 2,
-        10 + i % 20
-    ))
+building_id = 1
+for complex_id in range(1, 8):
+    num_buildings = random.randint(4, 5)  # 4–5 зданий на комплекс
+    for i in range(num_buildings):
+        buildings_data.append((
+            building_id,
+            complex_id,
+            residential_data[complex_id-1][2],  # city
+            residential_data[complex_id-1][3],  # street
+            f'{building_id*2}',
+            f'202{building_id % 10 + 1}-0{(building_id % 9) + 1}-01',
+            ['residential_building', 'apartment'][building_id % 2],
+            ['Бизнес', 'Эконом', 'Премиум'][building_id % 3],
+            ['Кирпич', 'Панель', 'Монолит'][building_id % 3],
+            building_id % 2,
+            10 + (building_id % 20)
+        ))
+        building_id += 1
 cursor.executemany('''
 INSERT INTO Buildings (building_id, complex_id, city, street, house_number, day_commissioning, type_housing, estate_class, wall_material, parking, floors_total)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -209,17 +211,17 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 # Objects (30 записей)
 objects_data = []
 for i in range(1, 31):
-    obj_type = (i % 5) + 1
+    obj_type = (i % 7) + 1
     total_area = 20 + i * 2.5
-    living_area = total_area * 0.7 if obj_type in [1,2,3] else None
+    living_area = total_area * 0.7 if obj_type in [1,2,3,6] else None
     studio = 1 if obj_type == 3 else 0
-    rooms = (i % 4) + 1 if obj_type in [1,2] else 0
-    bathrooms = (i % 2) + 1 if obj_type in [1,2,3] else 0
+    rooms = (i % 4) + 1 if obj_type in [1,2,6] else 0
+    bathrooms = (i % 2) + 1 if obj_type in [1,2,3,6] else 0
     bedrooms = rooms - 1 if rooms else 0
     objects_data.append((
         i,
-        (i % 30) + 1,
-        (i % 30) + 1,
+        (i % 7) + 1,  # complex_id
+        (i % len(buildings_data)) + 1,  # building_id
         f'{100 + i}',
         f'77:01:0001{i:03d}:101',
         obj_type,
@@ -240,9 +242,9 @@ INSERT INTO Objects (object_id, complex_id, building_id, number_object, cadastra
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ''', objects_data)
 
-# Staff (30 записей)
+# Staff (10 записей)
 staff_data = []
-for i in range(1, 31):
+for i in range(1, 11):
     staff_data.append((
         i,
         f'Фамилия{i}',
@@ -267,7 +269,7 @@ for i in range(1, 31):
         f'+7{i:010d}',
         f'client{i}@example.com',
         ['Мужской', 'Женский'][i % 2],
-        f'19{i % 50 + 70}-0{i % 9 + 1}-01',
+        f'19{i % 50 + 70}-0{(i % 9) + 1}-01',
         ['Женат', 'Не замужем', 'Разведён'][i % 3],
         i % 4,
         f'Город {i}, ул. {i}'
@@ -277,51 +279,57 @@ INSERT INTO Clients (client_id, last_name, first_name, patronymic, phone, email,
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ''', clients_data)
 
-# Orders (30 записей)
+# Orders (150 записей)
 orders_data = []
-for i in range(1, 31):
+for i in range(1, 151):
+    total_amount = 1000000 + i * 100000
+    discount_amount = round(total_amount * random.uniform(0.01, 0.05), 2)  # 1–5% скидка
     orders_data.append((
         i,
-        ['sale', 'rent'][i % 2],
-        (i % 30) + 1,
-        (i % 30) + 1,
-        (i % 30) + 1,
-        (i % 30) + 1,
-        (i % 30) + 1,
-        1000000 + i * 100000,
-        ['Рассрочка', 'Единовременно', 'Ипотека'][i % 3],
-        i * 10000,
+        'sale',
+        (i % 30) + 1,  # client_id
+        [1, 2, 3, 5][i % 4],  # staff_id с повторениями
+        (i % 7) + 1,  # complex_id
+        (i % len(buildings_data)) + 1,  # building_id
+        total_amount,
+        ['Единовременно', 'Ипотека', 'Рассрочка'][i % 3],
+        discount_amount,
         f'2025-0{(i % 9) + 1}-{(i % 28) + 1:02d}',
         ['active', 'closed'][i % 2]
     ))
 cursor.executemany('''
-INSERT INTO Orders (order_id, order_type, client_id, staff_id, complex_id, building_id, object_id, order_date, order_status, total_amount, payment_terms, discount_amount)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO Orders (order_id, order_type, client_id, staff_id, complex_id, building_id, total_amount, payment_terms, discount_amount, order_date, order_status)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ''', orders_data)
 
-# Order_items (30 записей)
+# Order_items (несколько object_id на order_id, ~200 записей)
 order_items_data = []
-for i in range(1, 31):
-    order_items_data.append((
-        i,
-        i,
-        1000000 + i * 100000
-    ))
+for order_id in range(1, 151):
+    num_objects = random.randint(1, 3)  # 1–3 объекта на заказ
+    selected_objects = random.sample(range(1, 31), num_objects)
+    for obj_id in selected_objects:
+        order_items_data.append((
+            order_id,
+            obj_id,
+            1000000 + obj_id * 100000
+        ))
 cursor.executemany('''
 INSERT INTO Order_items (order_id, object_id, sale_price)
 VALUES (?, ?, ?)
 ''', order_items_data)
 
-# Payment_schedule (60 записей, по 2 на order)
+# Payment_schedule (200 записей)
 payment_schedule_data = []
 schedule_id = 1
-for order_id in range(1, 31):
-    for j in range(2):
+for order_id in range(1, 151):
+    num_payments = random.randint(1, 3)  # 1–3 платежа на заказ
+    total_amount = orders_data[order_id-1][6]  # total_amount из Orders
+    for j in range(num_payments):
         payment_schedule_data.append((
             schedule_id,
             order_id,
             f'2025-0{(order_id % 9) + 2}-{(order_id + j) % 28 + 1:02d}',
-            (1000000 + order_id * 100000) / 2,
+            round(total_amount / num_payments, 2),
             j % 2
         ))
         schedule_id += 1
@@ -330,12 +338,13 @@ INSERT INTO Payment_schedule (schedule_id, order_id, scheduled_date, scheduled_a
 VALUES (?, ?, ?, ?, ?)
 ''', payment_schedule_data)
 
-# Transactions (30 записей)
+# Transactions (150 записей)
 transactions_data = []
-for i in range(1, 31):
+for i in range(1, 151):
+    schedule_id = (i % len(payment_schedule_data)) + 1
     transactions_data.append((
         i,
-        i,
+        schedule_id,
         500000 + i * 50000,
         f'2025-0{(i % 9) + 1}-{(i % 28) + 1:02d} 12:00:00',
         ['card', 'wire_transfer'][i % 2]
