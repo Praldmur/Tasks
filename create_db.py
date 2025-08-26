@@ -3,7 +3,7 @@ import os
 import random
 
 # Создаём файл базы данных
-db_file = 'real_estate_2.db'
+db_file = 'real_estate_3.db'
 if os.path.exists(db_file):
     os.remove(db_file)
 
