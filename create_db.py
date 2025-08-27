@@ -111,7 +111,7 @@ CREATE TABLE Orders (
     total_amount REAL,
     payment_terms TEXT,
     discount_amount REAL,
-    order_date TEXT,
+    order_date DATE,
     order_status TEXT,
     FOREIGN KEY (client_id) REFERENCES Clients(client_id),
     FOREIGN KEY (staff_id) REFERENCES Staff(staff_id),
@@ -135,7 +135,7 @@ cursor.execute('''
 CREATE TABLE Payment_schedule (
     schedule_id INTEGER PRIMARY KEY,
     order_id INTEGER,
-    scheduled_date TEXT,
+    scheduled_date DATE,
     scheduled_amount REAL,
     is_paid INTEGER,
     FOREIGN KEY (order_id) REFERENCES Orders(order_id)
@@ -147,7 +147,7 @@ CREATE TABLE Transactions (
     transaction_id INTEGER PRIMARY KEY,
     schedule_id INTEGER,
     payment_amount REAL,
-    transaction_date TEXT,
+    transaction_date DATE,
     payment_method TEXT,
     FOREIGN KEY (schedule_id) REFERENCES Payment_schedule(schedule_id)
 );
